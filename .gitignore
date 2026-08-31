@@ -1,0 +1,10 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+!example.tfvars
+node_modules/
+*.zip
+docs/
+CLAUDE.md
