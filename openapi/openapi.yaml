@@ -2,10 +2,24 @@ openapi: 3.0.1
 info:
   title: Debt Portfolio Intelligence API
   version: "1.0"
+components:
+  securitySchemes:
+    jwtAuthorizer:
+      type: apiKey
+      name: Authorization
+      in: header
+      x-amazon-apigateway-authtype: custom
+      x-amazon-apigateway-authorizer:
+        type: token
+        authorizerUri: ${authorizer_lambda_invoke_arn}
+        authorizerResultTtlInSeconds: 300
+        identityValidationExpression: "^Bearer .+$"
 paths:
   /v1/accounts/{id}:
     get:
       operationId: getAccountV1
+      security:
+        - jwtAuthorizer: []
       parameters:
         - name: id
           in: path
@@ -15,8 +29,13 @@ paths:
       responses:
         "200":
           description: Account details
-      x-amazon-apigateway-auth:
-        type: custom
+          headers:
+            Sunset:
+              schema:
+                type: string
+            Deprecation:
+              schema:
+                type: string
       x-amazon-apigateway-integration:
         type: aws
         httpMethod: POST
@@ -35,6 +54,8 @@ paths:
   /v1/accounts/{id}/transactions:
     get:
       operationId: getTransactionsV1
+      security:
+        - jwtAuthorizer: []
       parameters:
         - name: id
           in: path
@@ -44,6 +65,13 @@ paths:
       responses:
         "200":
           description: Transaction history
+          headers:
+            Sunset:
+              schema:
+                type: string
+            Deprecation:
+              schema:
+                type: string
       x-amazon-apigateway-integration:
         type: aws
         httpMethod: POST
@@ -62,9 +90,18 @@ paths:
   /v1/portfolio/metrics:
     get:
       operationId: getMetricsV1
+      security:
+        - jwtAuthorizer: []
       responses:
         "200":
           description: Portfolio metrics
+          headers:
+            Sunset:
+              schema:
+                type: string
+            Deprecation:
+              schema:
+                type: string
       x-amazon-apigateway-integration:
         type: aws_proxy
         httpMethod: POST
@@ -78,6 +115,8 @@ paths:
   /v1/accounts/{id}/enriched:
     get:
       operationId: getEnrichedV1
+      security:
+        - jwtAuthorizer: []
       parameters:
         - name: id
           in: path
@@ -94,6 +133,8 @@ paths:
   /v1/events/subscribe:
     post:
       operationId: subscribeEventsV1
+      security:
+        - jwtAuthorizer: []
       responses:
         "200":
           description: Webhook subscription created
@@ -104,6 +145,8 @@ paths:
   /v2/accounts/{id}:
     get:
       operationId: getAccountV2
+      security:
+        - jwtAuthorizer: []
       parameters:
         - name: id
           in: path
@@ -128,6 +171,8 @@ paths:
   /v2/accounts/{id}/transactions:
     get:
       operationId: getTransactionsV2
+      security:
+        - jwtAuthorizer: []
       parameters:
         - name: id
           in: path
@@ -152,6 +197,8 @@ paths:
   /v2/portfolio/metrics:
     get:
       operationId: getMetricsV2
+      security:
+        - jwtAuthorizer: []
       responses:
         "200":
           description: Portfolio metrics
@@ -162,6 +209,8 @@ paths:
   /v2/accounts/{id}/enriched:
     get:
       operationId: getEnrichedV2
+      security:
+        - jwtAuthorizer: []
       parameters:
         - name: id
           in: path
@@ -178,6 +227,8 @@ paths:
   /v2/events/subscribe:
     post:
       operationId: subscribeEventsV2
+      security:
+        - jwtAuthorizer: []
       responses:
         "200":
           description: Webhook subscription created

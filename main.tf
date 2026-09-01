@@ -71,4 +71,25 @@ module "lambda_health" {
   accounts_table_arn  = module.dynamodb.accounts_table_arn
 }
 
+module "api_gateway" {
+  source = "./modules/api_gateway"
+
+  project_name                 = var.project_name
+  environment                  = var.environment
+  aws_region                   = var.aws_region
+  accounts_table_name          = module.dynamodb.accounts_table_name
+  transactions_table_name      = module.dynamodb.transactions_table_name
+  enrichment_lambda_invoke_arn = module.lambda_enrichment.enrichment_lambda_invoke_arn
+  enrichment_lambda_arn        = module.lambda_enrichment.enrichment_lambda_arn
+  subscribe_lambda_invoke_arn  = module.lambda_events.subscribe_lambda_invoke_arn
+  subscribe_lambda_arn         = module.lambda_events.subscribe_lambda_arn
+  metrics_lambda_invoke_arn    = module.lambda_metrics.metrics_lambda_invoke_arn
+  metrics_lambda_arn           = module.lambda_metrics.metrics_lambda_arn
+  health_lambda_invoke_arn     = module.lambda_health.health_lambda_invoke_arn
+  health_lambda_arn            = module.lambda_health.health_lambda_arn
+  authorizer_lambda_invoke_arn = module.lambda_authorizer.authorizer_lambda_invoke_arn
+  authorizer_lambda_arn        = module.lambda_authorizer.authorizer_lambda_arn
+  consumer_registry_seed       = var.consumer_registry_seed
+}
+
 

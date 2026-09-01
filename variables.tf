@@ -32,3 +32,21 @@ variable "auth0_role_claim" {
   type        = string
   default     = "https://debt-portfolio-api/role"
 }
+
+variable "consumer_registry_seed" {
+  description = "Analyst roles and their throttle limits, mirrors consumer-registry table"
+  type = map(object({
+    rate_limit  = number
+    burst_limit = number
+  }))
+  default = {
+    "read-only-analyst" = {
+      rate_limit  = 5
+      burst_limit = 10
+    }
+    "senior-analyst" = {
+      rate_limit  = 20
+      burst_limit = 40
+    }
+  }
+}
