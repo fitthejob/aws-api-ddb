@@ -4,7 +4,7 @@ Serverless REST API on AWS, built with Terraform, providing governed access to d
 
 ## Architecture
 
-API Gateway REST API imported from `openapi/openapi.yaml`: direct DynamoDB integration (VTL) for simple reads (`accounts/{id}`, `accounts/{id}/transactions`), Lambda proxy integration for logic-bearing endpoints (enrichment via Bedrock, event subscription, metrics aggregation, health checks). A Lambda authorizer validates Auth0 JWTs on every protected route. See `docs/superpowers/specs/2026-08-31-debt-portfolio-intelligence-api-design.md` for the full design.
+API Gateway REST API imported from `openapi/openapi.yaml`: direct DynamoDB integration (VTL) for simple reads (`accounts/{id}`, `accounts/{id}/transactions`), Lambda proxy integration for logic-bearing endpoints (enrichment via Bedrock, event subscription, metrics aggregation, health checks). A Lambda authorizer validates Auth0 JWTs on every protected route.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ API Gateway REST API imported from `openapi/openapi.yaml`: direct DynamoDB integ
 
 ## Status
 
-All 5 phases are complete and applied: data layer, authentication, all four Lambda-backed endpoints (enrichment, events, metrics, health), API Gateway (OpenAPI spec, VTL mapping templates, v1/v2 stages, usage plans), seed data, and the CloudWatch observability dashboard.
+Fully built and applied: data layer, authentication, all four Lambda-backed endpoints (enrichment, events, metrics, health), API Gateway (OpenAPI spec, VTL mapping templates, v1/v2 stages, usage plans), seed data, and the CloudWatch observability dashboard.
 
 ## Tech Stack Matrix
 

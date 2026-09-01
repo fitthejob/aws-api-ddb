@@ -2,14 +2,14 @@
 
 ## `openapi.yaml`
 
-The single source-of-truth API definition, imported by API Gateway (Task 4.3) via `x-amazon-apigateway-integration` extensions. Defines every route across both API versions, plus the version-metadata and health endpoints.
+The single source-of-truth API definition, imported by API Gateway via `x-amazon-apigateway-integration` extensions. Defines every route across both API versions, plus the version-metadata and health endpoints.
 
 - `/v1/*` routes: the original API surface. `accounts/{id}` and `accounts/{id}/transactions` integrate directly with DynamoDB (no Lambda) via VTL request/response templates; `portfolio/metrics`, `accounts/{id}/enriched`, and `events/subscribe` proxy to their respective Lambdas. All v1 routes carry `Sunset`/`Deprecation` response headers.
 - `/v2/*` routes: the current API surface, mirroring v1's paths. The DynamoDB-integrated routes use a different response template (`strip-ddb-response-v2.vtl`) that wraps the account payload in a `{ "data": {...} }` envelope; the Lambda-backed routes are unchanged from v1.
 - `/meta/versions`: a mock integration (no backend call) that returns a static JSON payload describing each version's status and sunset date.
 - `/health`: proxies to the health Lambda.
 
-Region- and account-specific values (Lambda invoke ARNs, the API Gateway DynamoDB execution role, the VTL template bodies themselves) are left as `${...}` interpolation markers, resolved by Terraform's `templatefile()` when this spec is imported in Task 4.3.
+Region- and account-specific values (Lambda invoke ARNs, the API Gateway DynamoDB execution role, the VTL template bodies themselves) are left as `${...}` interpolation markers, resolved by Terraform's `templatefile()` in `modules/api_gateway` when this spec is imported.
 
 ## `templates/`
 
