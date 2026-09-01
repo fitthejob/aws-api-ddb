@@ -4,7 +4,7 @@ Serverless REST API on AWS, built with Terraform, providing governed access to d
 
 ## Status
 
-Phases 1 through 3 are complete and applied: data layer, authentication, and all four Lambda-backed endpoints (enrichment, events, metrics, health). Phase 4 (API Gateway, OpenAPI spec, versioning, usage plans) and Phase 5 (seed data, observability, setup documentation) have not been started; `modules/api_gateway` and `modules/observability` exist as empty scaffold directories only.
+Phases 1 through 4 are complete and applied: data layer, authentication, all four Lambda-backed endpoints (enrichment, events, metrics, health), and API Gateway (OpenAPI spec, VTL mapping templates, v1/v2 stages, usage plans). Phase 5 (seed data, observability, setup documentation) is in progress; seed data is written, `modules/observability` still exists as an empty scaffold directory.
 
 ## Tech Stack Matrix
 
@@ -38,8 +38,14 @@ modules/
   lambda_events/        # subscribe + stream-producer Lambdas, EventBridge bus, stream event source mapping
   lambda_metrics/        # metrics Lambda, read-only IAM policy on accounts table
   lambda_health/         # health Lambda, DynamoDB + Bedrock reachability checks
-  api_gateway/           # scaffolded, not yet implemented (Phase 4)
+  api_gateway/           # REST API imported from openapi/, DynamoDB direct-integration role, v1/v2 stages, usage plans
   observability/         # scaffolded, not yet implemented (Phase 5)
 ```
 
+`scripts/seed-data.mjs` populates the accounts, transactions, and consumer-registry tables with mock data; see `scripts/README.md`. `openapi/` holds the OpenAPI spec and VTL mapping templates consumed by `modules/api_gateway`; see `openapi/README.md`.
+
 Each Lambda's source lives under `lambdas/<name>/` with its own `README.md` documenting that function's step-by-step behavior; see those files for implementation detail beyond this matrix.
+
+## Known Gaps / Out of Scope
+
+- **Customer identity resolution.** This API's contract is `account_id`-only; there is no `customer_id`, `customer_name`, or `customer_ani` anywhere in the schema. Resolving a customer identifier to an `account_id` is an upstream responsibility; callers are expected to already hold the `account_id` before calling this API. This API will not add a customer-identity lookup (e.g., a GSI keyed on `customer_id`).

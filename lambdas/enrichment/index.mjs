@@ -32,6 +32,24 @@ function nowSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
+function emitCacheMetric(hit) {
+  console.log(
+    JSON.stringify({
+      _aws: {
+        Timestamp: Date.now(),
+        CloudWatchMetrics: [
+          {
+            Namespace: "DebtPortfolio/Enrichment",
+            Dimensions: [[]],
+            Metrics: [{ Name: hit ? "CacheHit" : "CacheMiss", Unit: "Count" }],
+          },
+        ],
+      },
+      [hit ? "CacheHit" : "CacheMiss"]: 1,
+    }),
+  );
+}
+
 export const handler = async (event) => {
   // TODO: no per-account authorization check; any authenticated analyst can read any account_id
   const accountId = event.pathParameters?.id;
@@ -50,6 +68,7 @@ export const handler = async (event) => {
   );
 
   if (cacheEntry.Item && cacheEntry.Item.expires_at > nowSeconds()) {
+    emitCacheMetric(true);
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
@@ -61,6 +80,8 @@ export const handler = async (event) => {
       }),
     };
   }
+
+  emitCacheMetric(false);
 
   const accountResult = await ddb.send(
     new GetCommand({

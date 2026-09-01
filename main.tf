@@ -92,4 +92,16 @@ module "api_gateway" {
   consumer_registry_seed       = var.consumer_registry_seed
 }
 
+module "observability" {
+  source = "./modules/observability"
 
+  project_name                    = var.project_name
+  environment                     = var.environment
+  aws_region                      = var.aws_region
+  rest_api_id                     = module.api_gateway.rest_api_id
+  enrichment_lambda_function_name = module.lambda_enrichment.enrichment_lambda_function_name
+  subscribe_lambda_function_name  = module.lambda_events.subscribe_lambda_function_name
+  metrics_lambda_function_name    = module.lambda_metrics.metrics_lambda_function_name
+  health_lambda_function_name     = module.lambda_health.health_lambda_function_name
+  authorizer_lambda_function_name = module.lambda_authorizer.authorizer_lambda_function_name
+}
