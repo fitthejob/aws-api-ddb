@@ -8,3 +8,4 @@ node_modules/
 *.zip
 docs/
 CLAUDE.md
+scripts/auth0-test-login.html

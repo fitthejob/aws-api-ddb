@@ -27,7 +27,7 @@ Fully built and applied: data layer, authentication, all four Lambda-backed endp
 | Data | `transactions` table | DynamoDB, `PAY_PER_REQUEST`, hash key `account_id`, range key `sk` | Per-account transaction history |
 | Data | `consumer-registry` table | DynamoDB, `PAY_PER_REQUEST`, hash key `analyst_role` | Role-to-API-key mapping consulted by the authorizer |
 | Data | `enrichment-cache` table | DynamoDB, `PAY_PER_REQUEST`, hash key `account_id`, TTL attribute `expires_at` | Caches AI-generated narratives for one hour to avoid repeat Bedrock calls |
-| Auth | Identity provider | Auth0 (OIDC), custom Action injecting a `role` claim via Credentials Exchange | Issues JWTs consumed by the Lambda authorizer |
+| Auth | Identity provider | Auth0 (OIDC), Single Page Application client, custom Action on the Login flow injecting a `role` claim from `app_metadata` | Issues per-analyst JWTs consumed by the Lambda authorizer |
 | Auth | `lambdas/authorizer` | Node.js 24.x, `aws-jwt-verify`, AWS SDK v3 (`client-dynamodb`, `lib-dynamodb`) | TOKEN-type Lambda authorizer: verifies JWT against Auth0 JWKS, resolves role to registry entry, returns Allow/Deny IAM policy |
 | Compute | `lambdas/enrichment` | Node.js 24.x, AWS SDK v3 (`client-dynamodb`, `lib-dynamodb`, `client-ssm`, `client-bedrock-runtime`) | Fetches account and transaction data, generates an AI risk narrative via Bedrock, caches the result |
 | Compute | `lambdas/events` (`subscribe.mjs`) | Node.js 24.x, AWS SDK v3 (`client-eventbridge`) | Registers analyst webhooks as EventBridge Connections, API Destinations, Rules, and Targets |
@@ -60,17 +60,38 @@ Each Lambda's source lives under `lambdas/<name>/` with its own `README.md` docu
 
 ## Setup
 
-1. Create an Auth0 tenant, then an API (this defines the audience) and a Machine-to-Machine application for analyst/service auth. Add a custom Action on the Login/Credentials Exchange flow that injects a `role` claim (matching `auth0_role_claim`) onto issued tokens, set from the requesting client's metadata or a rule you define. Record the tenant domain and API audience; you will need both for `terraform.tfvars`.
-2. Create `terraform.tfvars`:
+1. Create an Auth0 tenant, then an API (this defines the audience) and a Single Page Application client for analyst login. A Single Page Application is required, not Regular Web Application: `auth0-spa-js` (and any browser-based analyst app) authenticates via PKCE only and never sends a client secret, so a confidential client type will fail token exchange with a generic 401. Set the client's Allowed Callback URLs, Allowed Logout URLs, and Allowed Web Origins to match wherever the analyst app runs. Authorize that client for the API under the API's applications settings. Record the tenant domain and API audience; you will need both for `terraform.tfvars`.
+2. Create an Auth0 user per analyst (native database connection, or federate to your org's existing identity provider via an Enterprise Connection if one is available). Assign each user's role by setting `app_metadata` on their user record:
+   ```json
+   { "role": "senior-analyst" }
+   ```
+   The role value must match an entry in `consumer_registry_seed` and the seeded `consumer-registry` table.
+3. Add a custom Action on the **Login** flow (not Credentials Exchange, which only fires for Machine-to-Machine client-credentials grants and never sees a real user):
+   ```javascript
+   exports.onExecutePostLogin = async (event, api) => {
+     const namespace = "https://debt-portfolio-api/role";
+     const role = event.user.app_metadata?.role;
+
+     if (!role) {
+       api.access.deny("No analyst role assigned to this user.");
+       return;
+     }
+
+     api.idToken.setCustomClaim(namespace, role);
+     api.accessToken.setCustomClaim(namespace, role);
+   };
+   ```
+   The namespace must match `auth0_role_claim`. Deploy the Action and drag it into the Login flow between Start and Complete.
+4. Create `terraform.tfvars`:
    ```hcl
    auth0_domain   = "<your-tenant>.us.auth0.com"
    auth0_audience = "<your-api-audience>"
    ```
-3. Update `backend.tf` with your state bucket name.
-4. `terraform init`
-5. `terraform validate` and `terraform plan`; review carefully.
-6. `terraform apply`
-7. Seed data:
+5. Update `backend.tf` with your state bucket name.
+6. `terraform init`
+7. `terraform validate` and `terraform plan`; review carefully.
+8. `terraform apply`
+9. Seed data:
    ```bash
    cd scripts && npm install
    ACCOUNTS_TABLE_NAME=$(terraform output -raw accounts_table_name) \
@@ -80,12 +101,12 @@ Each Lambda's source lives under `lambdas/<name>/` with its own `README.md` docu
    node seed-data.mjs
    cd ..
    ```
-8. Get a test JWT from Auth0 for your Machine-to-Machine application, scoped to the API audience from step 1.
-9. Get your API key for a role:
-   ```bash
-   terraform output -raw api_key_values
-   ```
-10. Test:
+10. Get a test JWT by logging in as one of the analyst users created in step 2, through the Single Page Application client, using the PKCE Authorization Code flow (Client Credentials will not carry a per-analyst role claim, since it authenticates the application, not a user). One way to do this without a real frontend yet: point the app's Allowed Callback/Logout/Web Origin URLs at a locally-served static page using `auth0-spa-js`, log in as the test user, and read the access token off the resulting response.
+11. Get your API key for a role:
+    ```bash
+    terraform output -raw api_key_values
+    ```
+12. Test:
     ```bash
     curl -H "Authorization: Bearer <JWT>" \
          -H "x-api-key: <API_KEY>" \
@@ -105,4 +126,4 @@ Analyst roles and their per-role rate limits are defined in `variables.tf` under
 - **Customer identity resolution.** This API's contract is `account_id`-only; there is no `customer_id`, `customer_name`, or `customer_ani` anywhere in the schema. Resolving a customer identifier to an `account_id` is an upstream responsibility; callers are expected to already hold the `account_id` before calling this API. This API will not add a customer-identity lookup (e.g., a GSI keyed on `customer_id`).
 - No field-level or per-account authorization; the JWT role claim gates endpoint access only, not which specific accounts a given analyst may read.
 - Webhook subscription validation (`lambdas/events/subscribe.mjs`) is a basic SSRF guard (HTTPS enforcement plus private/loopback IP rejection at registration time), not production-hardened; see the TODO in that file for the residual DNS-rebinding gap.
-- No automated test suite.
+- Analyst identity currently relies on Auth0-native user accounts with hand-set `app_metadata`; there is no federation to an existing corporate identity provider (SAML/OIDC Enterprise Connection) and no group-based role sync. Role assignment is manual per user in the Auth0 dashboard.
