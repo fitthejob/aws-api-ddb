@@ -50,7 +50,7 @@ resource "aws_lambda_function" "health" {
   function_name    = "${var.project_name}-${var.environment}-health"
   role             = aws_iam_role.health.arn
   handler          = "index.handler"
-  runtime          = "nodejs22.x"
+  runtime          = "nodejs24.x"
   filename         = data.archive_file.health.output_path
   source_code_hash = data.archive_file.health.output_base64sha256
   timeout          = 10
