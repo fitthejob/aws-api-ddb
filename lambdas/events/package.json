@@ -1,0 +1,8 @@
+{
+  "name": "debt-portfolio-events",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-eventbridge": "^3.600.0"
+  }
+}

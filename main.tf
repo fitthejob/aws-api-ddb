@@ -28,3 +28,35 @@ module "lambda_authorizer" {
   auth0_jwks_url               = "https://${var.auth0_domain}/.well-known/jwks.json"
   auth0_role_claim             = var.auth0_role_claim
 }
+
+module "lambda_enrichment" {
+  source = "./modules/lambda_enrichment"
+
+  project_name = var.project_name
+  environment  = var.environment
+  aws_region   = var.aws_region
+
+  accounts_table_name         = module.dynamodb.accounts_table_name
+  accounts_table_arn          = module.dynamodb.accounts_table_arn
+  transactions_table_name     = module.dynamodb.transactions_table_name
+  transactions_table_arn      = module.dynamodb.transactions_table_arn
+  enrichment_cache_table_name = module.dynamodb.enrichment_cache_table_name
+  enrichment_cache_table_arn  = module.dynamodb.enrichment_cache_table_arn
+}
+
+module "lambda_events" {
+  source = "./modules/lambda_events"
+
+  project_name              = var.project_name
+  environment               = var.environment
+  accounts_table_stream_arn = module.dynamodb.accounts_table_stream_arn
+}
+
+module "lambda_metrics" {
+  source = "./modules/lambda_metrics"
+
+  project_name        = var.project_name
+  environment         = var.environment
+  accounts_table_name = module.dynamodb.accounts_table_name
+  accounts_table_arn  = module.dynamodb.accounts_table_arn
+}
