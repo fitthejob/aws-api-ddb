@@ -64,6 +64,8 @@ test("returns 404 when account does not exist on a cache miss", async () => {
 
   const result = await handler({ pathParameters: { id: "acc-missing" } });
   assert.strictEqual(result.statusCode, 404);
+  assert.strictEqual(bedrockMock.calls().length, 0);
+  assert.strictEqual(ddbMock.commandCalls(PutCommand).length, 0);
 });
 
 test("generates a narrative via Bedrock and writes it to cache on success", async () => {
@@ -90,6 +92,29 @@ test("generates a narrative via Bedrock and writes it to cache on success", asyn
   const putCalls = ddbMock.commandCalls(PutCommand);
   assert.strictEqual(putCalls.length, 1);
   assert.strictEqual(putCalls[0].args[0].input.Item.narrative, "at risk");
+
+  // getPromptTemplate() caches the prompt at module scope for the life of
+  // the warm container; this is the first test in the file to reach that
+  // code path, so it is the one place a genuine SSM fetch can be asserted.
+  assert.strictEqual(ssmMock.commandCalls(GetParameterCommand).length, 1);
+});
+
+test("reuses the module-level cached prompt on a later invocation without re-fetching from SSM", async () => {
+  ddbMock.on(GetCommand, { TableName: "enrichment-cache" }).resolves({ Item: undefined });
+  ddbMock.on(GetCommand, { TableName: "accounts" }).resolves({ Item: account });
+  ddbMock.on(QueryCommand).resolves({ Items: [] });
+  ddbMock.on(PutCommand).resolves({});
+  bedrockMock.on(ConverseCommand).resolves({
+    output: {
+      message: {
+        content: [{ text: JSON.stringify({ narrative: "still at risk", action_flag: "monitor" }) }],
+      },
+    },
+  });
+
+  await handler({ pathParameters: { id: "acc-1" } });
+
+  assert.strictEqual(ssmMock.commandCalls(GetParameterCommand).length, 0);
 });
 
 test("degrades gracefully with null narrative when Bedrock returns no text", async () => {

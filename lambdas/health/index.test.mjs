@@ -26,6 +26,10 @@ test("returns 200 with both dependencies reachable", async () => {
   assert.strictEqual(result.statusCode, 200);
   assert.strictEqual(body.dynamodb, "reachable");
   assert.strictEqual(body.bedrock, "reachable");
+
+  const describeCalls = ddbMock.commandCalls(DescribeTableCommand);
+  assert.strictEqual(describeCalls.length, 1);
+  assert.strictEqual(describeCalls[0].args[0].input.TableName, "accounts");
 });
 
 test("returns 503 when DynamoDB is unreachable", async () => {

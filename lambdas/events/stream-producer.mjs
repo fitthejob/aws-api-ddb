@@ -13,14 +13,15 @@ export const handler = async (event) => {
 
     const oldStatus = record.dynamodb.OldImage?.status?.S;
     const newStatus = record.dynamodb.NewImage?.status?.S;
+    const accountId = record.dynamodb.Keys?.account_id?.S;
 
-    if (oldStatus && newStatus && oldStatus !== newStatus) {
+    if (oldStatus && newStatus && accountId && oldStatus !== newStatus) {
       entries.push({
         Source: "debt-portfolio.accounts",
         DetailType: "Account State Change",
         EventBusName: process.env.EVENT_BUS_NAME,
         Detail: JSON.stringify({
-          account_id: record.dynamodb.Keys.account_id.S,
+          account_id: accountId,
           old_status: oldStatus,
           new_status: newStatus,
         }),

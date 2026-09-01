@@ -99,6 +99,40 @@ test("batches multiple qualifying records into one PutEvents call", async () => 
   assert.strictEqual(calls[0].args[0].input.Entries.length, 2);
 });
 
+test("skips a status-changing record with missing Keys instead of throwing", async () => {
+  eventBridgeMock.on(PutEventsCommand).resolves({ FailedEntryCount: 0 });
+
+  await assert.doesNotReject(() =>
+    handler({
+      Records: [
+        {
+          eventName: "MODIFY",
+          dynamodb: {
+            OldImage: { status: { S: "active" } },
+            NewImage: { status: { S: "delinquent" } },
+          },
+        },
+        {
+          eventName: "MODIFY",
+          dynamodb: {
+            Keys: { account_id: { S: "acc-2" } },
+            OldImage: { status: { S: "active" } },
+            NewImage: { status: { S: "delinquent" } },
+          },
+        },
+      ],
+    }),
+  );
+
+  const calls = eventBridgeMock.commandCalls(PutEventsCommand);
+  assert.strictEqual(calls.length, 1);
+  assert.strictEqual(calls[0].args[0].input.Entries.length, 1);
+  assert.strictEqual(
+    JSON.parse(calls[0].args[0].input.Entries[0].Detail).account_id,
+    "acc-2",
+  );
+});
+
 test("does not throw when PutEvents reports partial failures", async () => {
   eventBridgeMock.on(PutEventsCommand).resolves({
     FailedEntryCount: 1,

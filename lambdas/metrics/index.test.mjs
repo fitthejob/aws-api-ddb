@@ -55,7 +55,15 @@ test("returns the cached response within the TTL window without re-scanning", as
   const result = await handler();
   const body = JSON.parse(result.body);
 
+  // Asserts the full cached payload, not just total_accounts, so a
+  // regression that recomputes part of the response from the new (stale)
+  // Scan mock while reusing the rest of cachedResponse would be caught.
   assert.strictEqual(body.total_accounts, 3);
+  assert.strictEqual(body.total_balance, 900);
+  assert.strictEqual(body.by_risk_band.low.count, 2);
+  assert.strictEqual(body.by_risk_band.low.avg_balance, 200);
+  assert.strictEqual(body.by_risk_band.high.count, 1);
+  assert.strictEqual(body.by_risk_band.severe, undefined);
   assert.strictEqual(ddbMock.commandCalls(ScanCommand).length, 0);
 });
 
