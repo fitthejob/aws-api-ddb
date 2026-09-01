@@ -60,3 +60,12 @@ module "lambda_metrics" {
   accounts_table_name = module.dynamodb.accounts_table_name
   accounts_table_arn  = module.dynamodb.accounts_table_arn
 }
+
+module "lambda_health" {
+  source = "./modules/lambda_health"
+
+  project_name        = var.project_name
+  environment         = var.environment
+  accounts_table_name = module.dynamodb.accounts_table_name
+  accounts_table_arn  = module.dynamodb.accounts_table_arn
+}
