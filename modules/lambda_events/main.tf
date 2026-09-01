@@ -24,6 +24,37 @@ resource "aws_iam_role" "events" {
   })
 }
 
+resource "aws_iam_role" "eventbridge_invoke_destination" {
+  name = "${var.project_name}-${var.environment}-eventbridge-invoke-destination-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = { Service = "events.amazonaws.com" }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_invoke_destination" {
+  name = "${var.project_name}-${var.environment}-eventbridge-invoke-destination"
+  role = aws_iam_role.eventbridge_invoke_destination.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["events:InvokeApiDestination"]
+        Resource = "arn:aws:events:${var.aws_region}:*:api-destination/${var.project_name}-${var.environment}-dest-*/*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "events_basic_logs" {
   role       = aws_iam_role.events.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -57,6 +88,34 @@ resource "aws_iam_role_policy" "events_permissions" {
           "dynamodb:ListStreams"
         ]
         Resource = var.accounts_table_stream_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["iam:CreateServiceLinkedRole"]
+        Resource = "arn:aws:iam::*:role/aws-service-role/apidestinations.events.amazonaws.com/AWSServiceRoleForAmazonEventBridgeApiDestinations"
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = "apidestinations.events.amazonaws.com"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:TagResource"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:*:secret:events!connection/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
+        Resource = aws_iam_role.eventbridge_invoke_destination.arn
       }
     ]
   })
@@ -77,7 +136,8 @@ resource "aws_lambda_function" "subscribe" {
 
   environment {
     variables = {
-      EVENT_BUS_NAME = aws_cloudwatch_event_bus.this.name
+      EVENT_BUS_NAME              = aws_cloudwatch_event_bus.this.name
+      EVENTBRIDGE_INVOKE_ROLE_ARN = aws_iam_role.eventbridge_invoke_destination.arn
     }
   }
 }

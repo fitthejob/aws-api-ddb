@@ -9,3 +9,7 @@ variable "environment" {
 variable "accounts_table_stream_arn" {
   type = string
 }
+
+variable "aws_region" {
+  type = string
+}

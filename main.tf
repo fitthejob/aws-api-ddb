@@ -49,6 +49,7 @@ module "lambda_events" {
 
   project_name              = var.project_name
   environment               = var.environment
+  aws_region                = var.aws_region
   accounts_table_stream_arn = module.dynamodb.accounts_table_stream_arn
 }
 
@@ -69,3 +70,5 @@ module "lambda_health" {
   accounts_table_name = module.dynamodb.accounts_table_name
   accounts_table_arn  = module.dynamodb.accounts_table_arn
 }
+
+

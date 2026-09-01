@@ -87,6 +87,7 @@ export const handler = async (event) => {
         {
           Id: `target-${subscriptionId}`,
           Arn: destination.ApiDestinationArn,
+          RoleArn: process.env.EVENTBRIDGE_INVOKE_ROLE_ARN,
         },
       ],
     }),
