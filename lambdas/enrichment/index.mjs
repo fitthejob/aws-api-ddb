@@ -33,6 +33,7 @@ function nowSeconds() {
 }
 
 export const handler = async (event) => {
+  // TODO: no per-account authorization check; any authenticated analyst can read any account_id
   const accountId = event.pathParameters?.id;
   if (!accountId) {
     return {
@@ -89,8 +90,8 @@ export const handler = async (event) => {
   try {
     const promptTemplate = await getPromptTemplate();
     const prompt = promptTemplate
-      .replace("[[account]]", JSON.stringify(account))
-      .replace("[[transactions]]", JSON.stringify(transactions));
+      .replaceAll("[[account]]", JSON.stringify(account))
+      .replaceAll("[[transactions]]", JSON.stringify(transactions));
 
     const bedrockResponse = await bedrock.send(
       new ConverseCommand({

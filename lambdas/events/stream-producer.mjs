@@ -9,7 +9,7 @@ export const handler = async (event) => {
   const entries = [];
 
   for (const record of event.Records) {
-    if (record.eventName !== "MODIFY") continue;
+    if (record.eventName !== "MODIFY" || !record.dynamodb) continue;
 
     const oldStatus = record.dynamodb.OldImage?.status?.S;
     const newStatus = record.dynamodb.NewImage?.status?.S;
@@ -29,6 +29,17 @@ export const handler = async (event) => {
   }
 
   if (entries.length > 0) {
-    await eventBridge.send(new PutEventsCommand({ Entries: entries }));
+    const result = await eventBridge.send(
+      new PutEventsCommand({ Entries: entries }),
+    );
+
+    if (result.FailedEntryCount > 0) {
+      // TODO: no retry or DLQ for partially failed EventBridge publishes;
+      // failed entries are logged but otherwise dropped.
+      console.error(
+        `${result.FailedEntryCount} of ${entries.length} events failed to publish:`,
+        JSON.stringify(result.Entries),
+      );
+    }
   }
 };

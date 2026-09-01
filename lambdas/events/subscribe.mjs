@@ -7,19 +7,26 @@ import {
 } from "@aws-sdk/client-eventbridge";
 
 import { randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
 
 const eventBridge = new EventBridgeClient({});
 
-const BLOCKED_HOSTNAME_PATTERNS = [
-  /^localhost$/i,
+const BLOCKED_IP_PATTERNS = [
   /^127\./,
   /^10\./,
   /^192\.168\./,
   /^172\.(1[6-9]|2\d|3[0-1])\./,
   /^169\.254\./,
+  /^0\./,
+  /^::1$/,
+  /^fc00:/i,
+  /^fe80:/i,
 ];
 
-function isBlockedUrl(url) {
+// TODO: EventBridge re-resolves DNS at actual delivery time (and on every
+// retry), so this check does not fully close DNS-rebinding SSRF; a domain
+// could resolve publicly here and privately later.
+async function isBlockedUrl(url) {
   let parsed;
   try {
     parsed = new URL(url);
@@ -27,8 +34,17 @@ function isBlockedUrl(url) {
     return true;
   }
   if (parsed.protocol !== "https:") return true;
-  return BLOCKED_HOSTNAME_PATTERNS.some((pattern) =>
-    pattern.test(parsed.hostname),
+  if (/^localhost$/i.test(parsed.hostname)) return true;
+
+  let addresses;
+  try {
+    addresses = await lookup(parsed.hostname, { all: true });
+  } catch {
+    return true;
+  }
+
+  return addresses.some(({ address }) =>
+    BLOCKED_IP_PATTERNS.some((pattern) => pattern.test(address)),
   );
 }
 
@@ -36,7 +52,7 @@ export const handler = async (event) => {
   const body = JSON.parse(event.body || "{}");
   const webhookUrl = body.webhook_url;
 
-  if (!webhookUrl || isBlockedUrl(webhookUrl)) {
+  if (!webhookUrl || (await isBlockedUrl(webhookUrl))) {
     return {
       statusCode: 400,
       body: JSON.stringify({ error: "Invalid or disallowed webhook_url" }),

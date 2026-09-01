@@ -1,6 +1,6 @@
 resource "aws_ssm_parameter" "enrichment_prompt" {
   name  = "/${var.project_name}/${var.environment}/enrichment-prompt"
-  type  = "String"
+  type  = "SecureString"
   value = file("${path.root}/docs/enrichment-prompt.txt")
 }
 
@@ -53,16 +53,27 @@ resource "aws_iam_role_policy" "enrichment_ddb" {
   })
 }
 
+data "aws_kms_alias" "ssm_default" {
+  name = "alias/aws/ssm"
+}
+
 resource "aws_iam_role_policy" "enrichment_ssm" {
   name = "${var.project_name}-${var.environment}-enrichment-ssm"
   role = aws_iam_role.enrichment.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["ssm:GetParameter"]
-      Resource = aws_ssm_parameter.enrichment_prompt.arn
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter"]
+        Resource = aws_ssm_parameter.enrichment_prompt.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = data.aws_kms_alias.ssm_default.target_key_arn
+      }
+    ]
   })
 }
 
@@ -71,11 +82,22 @@ resource "aws_iam_role_policy" "enrichment_bedrock" {
   role = aws_iam_role.enrichment.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["bedrock:InvokeModel"]
-      Resource = "arn:aws:bedrock:${var.aws_region}:*:inference-profile/${var.bedrock_model_id}"
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["bedrock:InvokeModel"]
+        Resource = "arn:aws:bedrock:${var.aws_region}:*:inference-profile/${var.bedrock_model_id}"
+      },
+      {
+        Effect = "Allow"
+        Action = ["bedrock:InvokeModel"]
+        Resource = [
+          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+        ]
+      }
+    ]
   })
 }
 
