@@ -1,0 +1,6 @@
+{
+  "TableName": "$stageVariables.accountsTableName",
+  "Key": {
+    "account_id": { "S": "$util.escapeJavaScript($input.params('id'))" }
+  }
+}

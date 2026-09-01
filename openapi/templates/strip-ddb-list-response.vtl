@@ -1,0 +1,12 @@
+{
+  "transactions": [
+    #foreach($item in $input.path('$.Items'))
+    {
+      "transaction_id": "$item.sk.S",
+      "amount": $item.amount.N,
+      "date": "$item.date.S",
+      "type": "$item.type.S"
+    }#if($foreach.hasNext),#end
+    #end
+  ]
+}

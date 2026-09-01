@@ -1,0 +1,7 @@
+{
+  "TableName": "$stageVariables.transactionsTableName",
+  "KeyConditionExpression": "account_id = :id",
+  "ExpressionAttributeValues": {
+    ":id": { "S": "$util.escapeJavaScript($input.params('id'))" }
+  }
+}

@@ -1,0 +1,10 @@
+#set($item = $input.path('$.Item'))
+{
+  "data": {
+    "account_id": "$item.account_id.S",
+    "balance": $item.balance.N,
+    "status": "$item.status.S",
+    "risk_band": "$item.risk_band.S",
+    "product_type": "$item.product_type.S"
+  }
+}

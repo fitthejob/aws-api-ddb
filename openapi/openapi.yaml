@@ -1,0 +1,218 @@
+openapi: 3.0.1
+info:
+  title: Debt Portfolio Intelligence API
+  version: "1.0"
+paths:
+  /v1/accounts/{id}:
+    get:
+      operationId: getAccountV1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Account details
+      x-amazon-apigateway-auth:
+        type: custom
+      x-amazon-apigateway-integration:
+        type: aws
+        httpMethod: POST
+        uri: arn:aws:apigateway:${aws_region}:dynamodb:action/GetItem
+        credentials: ${api_gateway_dynamodb_role_arn}
+        requestTemplates:
+          application/json: ${get_account_request_vtl}
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: ${strip_ddb_response_vtl}
+            responseParameters:
+              method.response.header.Sunset: "'2027-01-01T00:00:00Z'"
+              method.response.header.Deprecation: "'true'"
+  /v1/accounts/{id}/transactions:
+    get:
+      operationId: getTransactionsV1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction history
+      x-amazon-apigateway-integration:
+        type: aws
+        httpMethod: POST
+        uri: arn:aws:apigateway:${aws_region}:dynamodb:action/Query
+        credentials: ${api_gateway_dynamodb_role_arn}
+        requestTemplates:
+          application/json: ${get_transactions_request_vtl}
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: ${strip_ddb_list_response_vtl}
+            responseParameters:
+              method.response.header.Sunset: "'2027-01-01T00:00:00Z'"
+              method.response.header.Deprecation: "'true'"
+  /v1/portfolio/metrics:
+    get:
+      operationId: getMetricsV1
+      responses:
+        "200":
+          description: Portfolio metrics
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: ${metrics_lambda_invoke_arn}
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Sunset: "'2027-01-01T00:00:00Z'"
+              method.response.header.Deprecation: "'true'"
+  /v1/accounts/{id}/enriched:
+    get:
+      operationId: getEnrichedV1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Enriched account with risk narrative
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: ${enrichment_lambda_invoke_arn}
+  /v1/events/subscribe:
+    post:
+      operationId: subscribeEventsV1
+      responses:
+        "200":
+          description: Webhook subscription created
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: ${subscribe_lambda_invoke_arn}
+  /v2/accounts/{id}:
+    get:
+      operationId: getAccountV2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Account details
+      x-amazon-apigateway-integration:
+        type: aws
+        httpMethod: POST
+        uri: arn:aws:apigateway:${aws_region}:dynamodb:action/GetItem
+        credentials: ${api_gateway_dynamodb_role_arn}
+        requestTemplates:
+          application/json: ${get_account_request_vtl}
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: ${strip_ddb_response_v2_vtl}
+  /v2/accounts/{id}/transactions:
+    get:
+      operationId: getTransactionsV2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction history
+      x-amazon-apigateway-integration:
+        type: aws
+        httpMethod: POST
+        uri: arn:aws:apigateway:${aws_region}:dynamodb:action/Query
+        credentials: ${api_gateway_dynamodb_role_arn}
+        requestTemplates:
+          application/json: ${get_transactions_request_vtl}
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: ${strip_ddb_list_response_vtl}
+  /v2/portfolio/metrics:
+    get:
+      operationId: getMetricsV2
+      responses:
+        "200":
+          description: Portfolio metrics
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: ${metrics_lambda_invoke_arn}
+  /v2/accounts/{id}/enriched:
+    get:
+      operationId: getEnrichedV2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Enriched account with risk narrative
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: ${enrichment_lambda_invoke_arn}
+  /v2/events/subscribe:
+    post:
+      operationId: subscribeEventsV2
+      responses:
+        "200":
+          description: Webhook subscription created
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: ${subscribe_lambda_invoke_arn}
+  /meta/versions:
+    get:
+      operationId: getVersions
+      responses:
+        "200":
+          description: API version status
+      x-amazon-apigateway-integration:
+        type: mock
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |
+                {
+                  "versions": [
+                    { "version": "v1", "status": "deprecated", "sunset": "2027-01-01T00:00:00Z" },
+                    { "version": "v2", "status": "live" }
+                  ]
+                }
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: Health status
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: ${health_lambda_invoke_arn}
