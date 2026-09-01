@@ -2,9 +2,15 @@
   "name": "debt-portfolio-authorizer",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "test": "node --experimental-test-module-mocks --test"
+  },
   "dependencies": {
     "aws-jwt-verify": "^4.0.1",
     "@aws-sdk/client-dynamodb": "^3.600.0",
     "@aws-sdk/lib-dynamodb": "^3.600.0"
+  },
+  "devDependencies": {
+    "aws-sdk-client-mock": "^4.0.0"
   }
 }
