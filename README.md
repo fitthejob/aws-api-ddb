@@ -23,6 +23,7 @@ Fully built and applied: data layer, authentication, all four Lambda-backed endp
 | Layer | Component | Technology | Purpose |
 | --- | --- | --- | --- |
 | IaC | Root config | Terraform (`~> 1.9.0`), AWS provider (`~> 6.0`), archive provider (`~> 2.4`) | Nested-module infrastructure, S3 remote state with native locking |
+| API | `api_gateway` | API Gateway REST API, OpenAPI import, VTL direct-DynamoDB integration for simple reads, Lambda proxy for logic-bearing routes, TOKEN Lambda authorizer, v1/v2 stages, usage plans/API keys | Public entry point; routes read-only DynamoDB access without a Lambda, proxies everything else |
 | Data | `accounts` table | DynamoDB, `PAY_PER_REQUEST`, hash key `account_id`, Streams enabled (`NEW_AND_OLD_IMAGES`) | Source of truth for account records; stream feeds the events pipeline |
 | Data | `transactions` table | DynamoDB, `PAY_PER_REQUEST`, hash key `account_id`, range key `sk` | Per-account transaction history |
 | Data | `consumer-registry` table | DynamoDB, `PAY_PER_REQUEST`, hash key `analyst_role` | Role-to-API-key mapping consulted by the authorizer |
