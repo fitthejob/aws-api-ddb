@@ -117,6 +117,18 @@ Each Lambda's source lives under `lambdas/<name>/` with its own `README.md` docu
 
 Analyst roles and their per-role rate limits are defined in `variables.tf` under `consumer_registry_seed` and mirrored into the `consumer-registry` DynamoDB table by the seed script. Terraform generates one API Gateway usage plan and API key per role from this variable at apply time; the table itself is not read live by API Gateway. To add a role: add an entry to `consumer_registry_seed` in `terraform.tfvars`, add a matching entry to the `roles` array in `scripts/seed-data.mjs`, run `terraform apply`, then re-run the seed script.
 
+## Future Extension Point: Federated Identity Provider
+
+The current setup uses Auth0-native user accounts with roles set by hand in `app_metadata` (see Known Gaps below). This can be extended to federate to a real corporate identity provider without touching the API Gateway, Lambda, or Terraform layers, since the Login-flow Action already reads role off `event.user` regardless of where that user record originates.
+
+1. Add an Enterprise Connection in Auth0 (SAML or OIDC) pointed at the org's IdP (Entra ID, Okta, etc.), and enable it on the Single Page Application client. Federated logins populate `event.user` the same way native logins do.
+2. Two ways to source the role claim from there, in increasing order of governance maturity:
+   - **Keep `app_metadata`, just federate login.** Employees authenticate with real corporate credentials (SSO, existing MFA policy), but someone still sets `app_metadata.role` on each Auth0 user by hand. Smaller change, but role management stays manual and disconnected from the IdP.
+   - **Derive role from an IdP group claim.** Configure the IdP to include group membership in the SAML assertion or OIDC token (e.g. an Entra ID security group `debt-portfolio-senior-analysts`), and have the Login-flow Action read that group claim instead of `app_metadata.role`, mapping it to one of the `consumer_registry_seed` role names. IT then manages analyst access the same way they manage any other group membership, with no Auth0 dashboard involvement for day-to-day changes.
+3. The claim namespace, `auth0_role_claim`, the authorizer Lambda, and the `consumer-registry` table all stay as-is; only the source of the role value inside the Action changes.
+
+This has not been implemented or tested here since it requires an actual external IdP tenant to federate against.
+
 ## Versioning Strategy
 
 `v1` and `v2` are separate API Gateway stages sharing one REST API and one set of Lambda backends. `v1` returns the original flat response shape and carries `Sunset`/`Deprecation` response headers on the DynamoDB-backed and metrics routes; `v2` wraps the DynamoDB-backed responses in a `{ "data": {...} }` envelope and carries neither header. Version status is documented at `GET /meta/versions`. Consult that endpoint before building against `v1`; it is deprecated as of this project's initial release.
